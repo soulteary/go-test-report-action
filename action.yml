@@ -139,7 +139,7 @@ runs:
         bash "${GITHUB_ACTION_PATH}/scripts/validate-inputs.sh"
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v7
       with:
         go-version-file: ${{ inputs.directory }}/${{ inputs.go_version_file }}
         cache-dependency-path: ${{ inputs.directory }}/go.sum
