@@ -2,7 +2,7 @@ BINARY := gtr
 PKG := ./cmd/gtr
 COVERPROFILE := coverage.out
 
-.PHONY: all build test cover cover-html vet fmt fmt-check tidy lint clean smoke
+.PHONY: all build test cover cover-html vet fmt fmt-check tidy lint clean smoke patch-cover
 
 all: fmt-check vet test
 
@@ -26,6 +26,13 @@ vet:
 # Requires golangci-lint: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 lint:
 	golangci-lint run ./...
+
+# Enforce patch coverage (new lines >= 90%) against BASE_REF (default origin/main).
+# Runs the script's built-in selftest first.
+patch-cover:
+	bash scripts/check-patch-coverage.sh --selftest
+	go test -covermode=atomic -coverprofile=$(COVERPROFILE) ./...
+	bash scripts/check-patch-coverage.sh $(COVERPROFILE)
 
 fmt:
 	gofmt -w $(shell git ls-files '*.go')
