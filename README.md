@@ -9,10 +9,10 @@ Enterprise, air-gapped mirrors, and projects that will not upload source or
 coverage data.
 
 [![Go Test Coverage](./.github/coverage.svg)](./.github/go-test-report.md)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-GTR%20Go%20Test%20Report-blue?logo=github)](https://github.com/marketplace/actions/gtr-go-test-report)
 [![CI](https://github.com/soulteary/go-test-report-action/actions/workflows/ci.yml/badge.svg)](https://github.com/soulteary/go-test-report-action/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/soulteary/go-test-report-action/actions/workflows/codeql.yml/badge.svg)](https://github.com/soulteary/go-test-report-action/actions/workflows/codeql.yml)
 [![Release](https://img.shields.io/github/v/release/soulteary/go-test-report-action?sort=semver)](https://github.com/soulteary/go-test-report-action/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/soulteary/go-test-report-action)](https://goreportcard.com/report/github.com/soulteary/go-test-report-action)
+[![Go Report Card](./.github/goreportcard.svg)](./.github/goreportcard-report.md)
 [![License](https://img.shields.io/github/license/soulteary/go-test-report-action)](LICENSE)
 
 ## What it does

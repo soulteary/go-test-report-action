@@ -14,9 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subcommand), plus a note about the differing default `cover-mode` between the
   CLI (`set`) and the Action (`atomic`).
 - `golangci-lint` step in CI and a `make lint` target.
-- Supply-chain hardening: a `govulncheck` CI job, a CodeQL analysis workflow,
-  and release-time cosign keyless signing, an SBOM (Syft, CycloneDX), and SLSA
-  build provenance attestations for every archive and `checksums.txt`.
+- Supply-chain hardening: a `govulncheck` CI job, and release-time cosign
+  keyless signing, an SBOM (Syft, CycloneDX), and SLSA build provenance
+  attestations for every archive and `checksums.txt`.
+- Go Report Card workflow (`soulteary/goreportcard-action`) that grades the
+  project locally, renders a self-contained SVG badge, and commits it back —
+  no dependency on the (now sunset) `goreportcard.com` service.
 - Patch-coverage gate (`scripts/check-patch-coverage.sh`, new lines `>= 90%`)
   wired into CI on pull requests, with a `--selftest` mode the CI verifies.
 - `lefthook` pre-commit/pre-push config for local `gofmt`/`vet`/`lint`/`test`.
