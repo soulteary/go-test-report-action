@@ -205,11 +205,12 @@ func Parse(r io.Reader) (ParseResult, error) {
 
 		passed, failed, skipped := 0, 0, 0
 		for name, isFailed := range p.tests {
-			if isFailed {
+			switch {
+			case isFailed:
 				failed++
-			} else if p.skipped[name] {
+			case p.skipped[name]:
 				skipped++
-			} else {
+			default:
 				passed++
 			}
 		}

@@ -38,7 +38,8 @@ func Tokenize(s string) ([]string, error) {
 				cur.WriteRune(c)
 			}
 		case double:
-			if c == '\\' && i+1 < len(runes) {
+			switch {
+			case c == '\\' && i+1 < len(runes):
 				next := runes[i+1]
 				if next == '"' || next == '\\' {
 					cur.WriteRune(next)
@@ -46,9 +47,9 @@ func Tokenize(s string) ([]string, error) {
 					continue
 				}
 				cur.WriteRune(c)
-			} else if c == '"' {
+			case c == '"':
 				quote = none
-			} else {
+			default:
 				cur.WriteRune(c)
 			}
 		default: // none
