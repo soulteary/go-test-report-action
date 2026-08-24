@@ -1,0 +1,25 @@
+# lefthook local git hooks. Install once with:
+#   go install github.com/evilmartians/lefthook@latest && lefthook install
+# (or `brew install lefthook`). Hooks mirror the CI gates so failures surface
+# before pushing. Set LEFTHOOK=0 to skip, or `git commit --no-verify` to bypass.
+
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      # Only the staged Go files; fail if any need formatting.
+      run: |
+        out="$(gofmt -l {staged_files})"
+        if [ -n "$out" ]; then echo "gofmt needed on:"; echo "$out"; exit 1; fi
+    vet:
+      glob: "*.go"
+      run: go vet ./...
+    lint:
+      glob: "*.go"
+      run: golangci-lint run ./...
+
+pre-push:
+  commands:
+    test:
+      run: go test ./...
