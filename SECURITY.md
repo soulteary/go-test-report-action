@@ -35,7 +35,23 @@ minimal, auditable trust boundary:
   workspace.
 - **Release integrity.** Prebuilt binaries are verified against `checksums.txt`
   (SHA256) before use; a failed download or checksum falls back to a source
-  build from the pinned action checkout.
+  build from the pinned action checkout. Each release archive, `checksums.txt`,
+  and the SBOM are additionally signed with [cosign](https://docs.sigstore.dev/)
+  keyless signing (Sigstore transparency log, no long-lived keys), ship a
+  CycloneDX SBOM, and carry an SLSA build-provenance attestation. Verify an
+  archive with:
+
+  ```bash
+  cosign verify-blob \
+    --certificate gtr_<version>_<os>_<arch>.tar.gz.pem \
+    --signature  gtr_<version>_<os>_<arch>.tar.gz.sig \
+    --certificate-identity-regexp 'https://github.com/soulteary/go-test-report-action/.+' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    gtr_<version>_<os>_<arch>.tar.gz
+
+  gh attestation verify gtr_<version>_<os>_<arch>.tar.gz \
+    --repo soulteary/go-test-report-action
+  ```
 - **Escaping.** Test names, package names, and error text are escaped for
   Markdown, GitHub workflow commands, and SVG/XML output.
 - **Scoped Git writes.** Write-back only ever `git add`s the three stable report

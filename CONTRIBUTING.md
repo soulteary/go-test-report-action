@@ -24,12 +24,21 @@ make all        # fmt-check + vet + test
 | `make fmt-check` | Fail if any file needs formatting. |
 | `make vet` | Run `go vet ./...`. |
 | `make lint` | Run `golangci-lint` (install it first, see below). |
+| `make patch-cover` | Enforce patch coverage (new lines `>= 90%`) locally. |
 | `make smoke` | Build and run the CLI against the passing fixture. |
 
 Install `golangci-lint` locally with:
 
 ```bash
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+Optionally install [`lefthook`](https://github.com/evilmartians/lefthook) to run
+`gofmt`/`vet`/`lint` on commit and the tests on push:
+
+```bash
+go install github.com/evilmartians/lefthook@latest
+lefthook install
 ```
 
 ## Pull requests

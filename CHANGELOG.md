@@ -14,6 +14,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subcommand), plus a note about the differing default `cover-mode` between the
   CLI (`set`) and the Action (`atomic`).
 - `golangci-lint` step in CI and a `make lint` target.
+- Supply-chain hardening: a `govulncheck` CI job, a CodeQL analysis workflow,
+  and release-time cosign keyless signing, an SBOM (Syft, CycloneDX), and SLSA
+  build provenance attestations for every archive and `checksums.txt`.
+- Patch-coverage gate (`scripts/check-patch-coverage.sh`, new lines `>= 90%`)
+  wired into CI on pull requests, with a `--selftest` mode the CI verifies.
+- `lefthook` pre-commit/pre-push config for local `gofmt`/`vet`/`lint`/`test`.
+- `CODEOWNERS` and `.github/FUNDING.yml` governance files.
+- Documented artifact verification (`cosign verify-blob` and
+  `gh attestation verify`) in `SECURITY.md` and the README release section.
+
+### Changed
+- Renamed the CLI binary and install path from `gotestreport` to `gtr`
+  (`go install .../cmd/gtr@latest`); all docs, scripts, and the Makefile now
+  use `gtr`.
+- Bumped the Go toolchain to 1.26.6 across `go.mod` and the test fixtures.
+- Pinned all third-party GitHub Actions to full commit SHAs (with a trailing
+  version comment) instead of floating major tags.
+- Expanded `.golangci.yml` to an explicit allow-list that additionally enables
+  `gosec`, `revive`, `gocritic`, `bodyclose`, and `nolintlint`, and pinned the
+  linter version in CI.
+- README coverage numbers are now derived from CI artifacts (single source of
+  truth) rather than hand-maintained per-package percentages.
+
+### Fixed
+- Resolve a relative `-coverprofile` path against the process working
+  directory rather than the `go test` directory, so coverage is collected
+  correctly when `--directory` is set.
 
 ## [1.0.0]
 
