@@ -1,17 +1,29 @@
+# golangci-lint v2 config. Linters are an explicit allow-list (default set is
+# disabled) so enabling a new check is always a deliberate, reviewed change.
+# The runner version is pinned in .github/workflows/ci.yml.
 version: "2"
 
 run:
   timeout: 5m
 
 linters:
+  default: none
   enable:
+    # Correctness
     - errcheck
     - govet
     - ineffassign
     - staticcheck
     - unused
+    - bodyclose
+    # Security
+    - gosec
+    # Style / maintainability
+    - revive
+    - gocritic
     - misspell
     - unconvert
+    - nolintlint
 
   settings:
     errcheck:
@@ -23,12 +35,40 @@ linters:
         - fmt.Fprintln
         - (io.Closer).Close
         - (*os.File).Close
+    gosec:
+      excludes:
+        # G204: this tool's entire purpose is running `go test` with
+        # user-provided (but tokenized, never shell-evaluated) arguments; the
+        # subprocess invocation is audited in the gotest package.
+        - G204
+        # G301/G306: the generated report, badge, JSON, and their parent
+        # directories are meant to be committed and read by other users/tools,
+        # so world-readable 0644/0755 is intentional, not a leak.
+        - G301
+        - G306
+        # G304: report/profile paths come from CLI flags but are validated by
+        # the pathguard package to stay inside the workspace before any open.
+        - G304
+    revive:
+      rules:
+        - name: exported
+        - name: var-declaration
+        - name: unreachable-code
+        - name: error-return
+        - name: error-strings
+        - name: context-as-argument
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
 
   exclusions:
     rules:
       - path: _test\.go
         linters:
           - errcheck
+          - gosec
+          - revive
 
 formatters:
   enable:
