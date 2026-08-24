@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-25
+
 ### Added
 - `.gitignore`, `.editorconfig`, Dependabot config, issue/PR templates,
   `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and a `.golangci.yml` lint config.
@@ -52,5 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Markdown report, self-contained SVG coverage badge, and JSON output, with a
   GitHub Actions Job Summary, coverage gates, and optional in-repo write-back.
 
-[Unreleased]: https://github.com/soulteary/go-test-report-action/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/soulteary/go-test-report-action/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/soulteary/go-test-report-action/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/soulteary/go-test-report-action/releases/tag/v1.0.0
