@@ -164,6 +164,18 @@ func TestResultPercentage_Zero(t *testing.T) {
 	}
 }
 
+func TestPackageCoveragePercentage(t *testing.T) {
+	// Zero total statements (N/A package) reports 0.
+	if got := (PackageCoverage{}).Percentage(); got != 0 {
+		t.Fatalf("zero-statement package should be 0%%, got %.4f", got)
+	}
+	// 3 of 4 covered => 75%.
+	p := PackageCoverage{CoveredStatements: 3, TotalStatements: 4}
+	if got := p.Percentage(); got < 74.99 || got > 75.01 {
+		t.Fatalf("expected 75%%, got %.4f", got)
+	}
+}
+
 func TestBelowThreshold_ZeroTotal(t *testing.T) {
 	if belowThreshold(0, 0, 80) {
 		t.Fatal("zero-total should never be below threshold")

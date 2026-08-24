@@ -126,72 +126,11 @@ func Parse(r io.Reader) (ParseResult, error) {
 		}
 
 		if ev.Test == "" {
-			// Package-level event.
-			switch ev.Action {
-			case "fail":
-				p.pkgFailed = true
-				// A package-level fail with no tests run typically means a
-				// build/compile failure.
-				if !p.sawAnyTest {
-					if isCompileFailure(ev.Output) || compileHint(p) {
-						p.pkgCompile = true
-					}
-				}
-			case "output":
-				if isCompileFailure(ev.Output) && !p.sawAnyTest {
-					p.pkgCompile = true
-				}
-			}
+			applyPackageEvent(p, ev)
 			continue
 		}
 
-		top := topLevel(ev.Test)
-		switch ev.Action {
-		case "run":
-			p.sawAnyTest = true
-			if _, ok := p.seen[top]; !ok {
-				p.seen[top] = true
-			}
-		case "pass":
-			p.sawAnyTest = true
-			if top == ev.Test {
-				p.seen[top] = true
-				// Only mark passed if not already failed by a subtest.
-				if _, failed := p.tests[top]; !failed {
-					p.tests[top] = false
-				}
-			}
-		case "fail":
-			p.sawAnyTest = true
-			p.seen[top] = true
-			if !p.tests[top] {
-				// first time this top-level test is marked failed
-				if _, recorded := p.failRecorded[top]; !recorded {
-					p.failOrder = append(p.failOrder, top)
-					p.failRecorded[top] = true
-				}
-			}
-			p.tests[top] = true
-		case "skip":
-			p.sawAnyTest = true
-			if top == ev.Test {
-				p.seen[top] = true
-				if _, exists := p.tests[top]; !exists {
-					p.skipped[top] = true
-				}
-			}
-		case "output":
-			// Capture output for failing tests (bounded).
-			if b := p.failOutput[top]; b != nil {
-				appendBounded(b, ev.Output)
-			} else {
-				// Buffer lazily; we may not know yet if it fails. Keep a small
-				// rolling buffer keyed by top-level test.
-				nb := &strings.Builder{}
-				appendBounded(nb, ev.Output)
-				p.failOutput[top] = nb
-			}
-		}
+		applyTestEvent(p, ev)
 	}
 	if err := scanner.Err(); err != nil {
 		return ParseResult{}, err
@@ -200,65 +139,147 @@ func Parse(r io.Reader) (ParseResult, error) {
 	// Finalize aggregation.
 	sort.Strings(order)
 	for _, importPath := range order {
-		p := pkgs[importPath]
-		pr := PackageResult{ImportPath: importPath}
-
-		passed, failed, skipped := 0, 0, 0
-		for name, isFailed := range p.tests {
-			switch {
-			case isFailed:
-				failed++
-			case p.skipped[name]:
-				skipped++
-			default:
-				passed++
-			}
-		}
-		for name := range p.skipped {
-			if _, ok := p.tests[name]; !ok {
-				skipped++
-			}
-		}
-
-		total := passed + failed + skipped
-		pr.Tests = total
-		pr.Failed = failed
-
-		switch {
-		case p.pkgCompile:
-			pr.Status = model.StatusFail
-			res.CompileFailed = true
-		case failed > 0 || p.pkgFailed:
-			pr.Status = model.StatusFail
-		case total == 0:
-			pr.Status = model.StatusNoTests
-		default:
-			pr.Status = model.StatusPass
-		}
-
-		res.Tests.Total += total
-		res.Tests.Passed += passed
-		res.Tests.Failed += failed
-		res.Tests.Skipped += skipped
-
-		// Record failing cases in deterministic order.
-		sort.Strings(p.failOrder)
-		for _, name := range p.failOrder {
-			out := ""
-			if b := p.failOutput[name]; b != nil {
-				out = strings.TrimRight(b.String(), "\n")
-			}
-			res.Failures = append(res.Failures, model.Failure{
-				Package: importPath,
-				Test:    name,
-				Output:  out,
-			})
-		}
-
-		res.Packages = append(res.Packages, pr)
+		finalizePackage(&res, importPath, pkgs[importPath])
 	}
 
 	return res, nil
+}
+
+// applyPackageEvent handles events that carry no Test name (package-level).
+func applyPackageEvent(p *pkgAgg, ev event) {
+	switch ev.Action {
+	case "fail":
+		p.pkgFailed = true
+		// A package-level fail with no tests run typically means a
+		// build/compile failure.
+		if !p.sawAnyTest && (isCompileFailure(ev.Output) || compileHint(p)) {
+			p.pkgCompile = true
+		}
+	case "output":
+		if isCompileFailure(ev.Output) && !p.sawAnyTest {
+			p.pkgCompile = true
+		}
+	}
+}
+
+// applyTestEvent handles events tied to a specific test.
+func applyTestEvent(p *pkgAgg, ev event) {
+	top := topLevel(ev.Test)
+	switch ev.Action {
+	case "run":
+		p.sawAnyTest = true
+		p.seen[top] = true
+	case "pass":
+		p.sawAnyTest = true
+		if top == ev.Test {
+			p.seen[top] = true
+			// Only mark passed if not already failed by a subtest.
+			if _, failed := p.tests[top]; !failed {
+				p.tests[top] = false
+			}
+		}
+	case "fail":
+		p.sawAnyTest = true
+		p.seen[top] = true
+		if !p.tests[top] && !p.failRecorded[top] {
+			// first time this top-level test is marked failed
+			p.failOrder = append(p.failOrder, top)
+			p.failRecorded[top] = true
+		}
+		p.tests[top] = true
+	case "skip":
+		p.sawAnyTest = true
+		if top == ev.Test {
+			p.seen[top] = true
+			if _, exists := p.tests[top]; !exists {
+				p.skipped[top] = true
+			}
+		}
+	case "output":
+		captureOutput(p, top, ev.Output)
+	}
+}
+
+// captureOutput buffers bounded output keyed by top-level test.
+func captureOutput(p *pkgAgg, top, output string) {
+	b := p.failOutput[top]
+	if b == nil {
+		b = &strings.Builder{}
+		p.failOutput[top] = b
+	}
+	appendBounded(b, output)
+}
+
+// countTests tallies passed/failed/skipped tests for a package.
+func countTests(p *pkgAgg) (passed, failed, skipped int) {
+	for name, isFailed := range p.tests {
+		switch {
+		case isFailed:
+			failed++
+		case p.skipped[name]:
+			skipped++
+		default:
+			passed++
+		}
+	}
+	for name := range p.skipped {
+		if _, ok := p.tests[name]; !ok {
+			skipped++
+		}
+	}
+	return passed, failed, skipped
+}
+
+// packageStatus derives the reported status for a package.
+func packageStatus(p *pkgAgg, failed, total int) (status string, compileFailed bool) {
+	switch {
+	case p.pkgCompile:
+		return model.StatusFail, true
+	case failed > 0 || p.pkgFailed:
+		return model.StatusFail, false
+	case total == 0:
+		return model.StatusNoTests, false
+	default:
+		return model.StatusPass, false
+	}
+}
+
+// finalizePackage aggregates a single package's results into res.
+func finalizePackage(res *ParseResult, importPath string, p *pkgAgg) {
+	pr := PackageResult{ImportPath: importPath}
+
+	passed, failed, skipped := countTests(p)
+
+	total := passed + failed + skipped
+	pr.Tests = total
+	pr.Failed = failed
+
+	status, compileFailed := packageStatus(p, failed, total)
+	pr.Status = status
+	if compileFailed {
+		res.CompileFailed = true
+	}
+
+	res.Tests.Total += total
+	res.Tests.Passed += passed
+	res.Tests.Failed += failed
+	res.Tests.Skipped += skipped
+
+	// Record failing cases in deterministic order.
+	sort.Strings(p.failOrder)
+	for _, name := range p.failOrder {
+		out := ""
+		if b := p.failOutput[name]; b != nil {
+			out = strings.TrimRight(b.String(), "\n")
+		}
+		res.Failures = append(res.Failures, model.Failure{
+			Package: importPath,
+			Test:    name,
+			Output:  out,
+		})
+	}
+
+	res.Packages = append(res.Packages, pr)
 }
 
 func appendBounded(b *strings.Builder, s string) {

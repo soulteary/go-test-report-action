@@ -3,7 +3,9 @@ package gotest
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -215,5 +217,63 @@ func TestStreamEvents_NonJSONLine(t *testing.T) {
 	}
 	if !strings.Contains(jsonl.String(), "not-json") {
 		t.Fatalf("raw jsonl should contain all lines: %s", jsonl.String())
+	}
+}
+
+// failWriter fails writes after allowing okWrites successful writes, letting us
+// exercise error paths in writeLine and streamEvents.
+type failWriter struct {
+	okWrites int
+	n        int
+}
+
+func (f *failWriter) Write(p []byte) (int, error) {
+	if f.n >= f.okWrites {
+		return 0, errors.New("write failed")
+	}
+	f.n++
+	return len(p), nil
+}
+
+func TestWriteLine(t *testing.T) {
+	var buf bytes.Buffer
+	n, err := writeLine(&buf, []byte("abc"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 4 || buf.String() != "abc\n" {
+		t.Fatalf("unexpected writeLine result: n=%d out=%q", n, buf.String())
+	}
+
+	// Fail on the first write (the payload).
+	if _, err := writeLine(&failWriter{okWrites: 0}, []byte("abc")); err == nil {
+		t.Fatal("expected error when payload write fails")
+	}
+	// Fail on the second write (the newline).
+	if _, err := writeLine(&failWriter{okWrites: 1}, []byte("abc")); err == nil {
+		t.Fatal("expected error when newline write fails")
+	}
+}
+
+func TestStreamEvents_WriteError(t *testing.T) {
+	// A JSON line whose raw copy to jsonlOut fails should surface the error.
+	in := `{"Action":"output","Package":"m","Output":"hi\n"}` + "\n"
+	var log bytes.Buffer
+	if err := streamEvents(strings.NewReader(in), &failWriter{okWrites: 0}, &log); err == nil {
+		t.Fatal("expected error when jsonl write fails")
+	}
+	// A non-JSON line whose raw copy fails should also surface the error.
+	if err := streamEvents(strings.NewReader("not-json\n"), &failWriter{okWrites: 0}, &log); err == nil {
+		t.Fatal("expected error when non-json jsonl write fails")
+	}
+}
+
+func TestAsExitError(t *testing.T) {
+	var target *exec.ExitError
+	if asExitError(errors.New("plain"), &target) {
+		t.Fatal("plain error should not be an ExitError")
+	}
+	if target != nil {
+		t.Fatal("target should stay nil for non-ExitError")
 	}
 }

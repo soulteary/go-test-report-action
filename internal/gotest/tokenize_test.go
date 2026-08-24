@@ -22,6 +22,7 @@ func TestTokenize(t *testing.T) {
 		{"mixed", `-run 'A B' -x "c d" e`, []string{"-run", "A B", "-x", "c d", "e"}},
 		{"adjacent-quotes", `'a'"b"c`, []string{"abc"}},
 		{"newline-separates", "a\nb", []string{"a", "b"}},
+		{"double-quote-literal-backslash", `"a\b"`, []string{`a\b`}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -37,7 +38,7 @@ func TestTokenize(t *testing.T) {
 }
 
 func TestTokenize_UnterminatedQuote(t *testing.T) {
-	for _, in := range []string{`'abc`, `"abc`, `-run "a b`} {
+	for _, in := range []string{`'abc`, `"abc`, `-run "a b`, `"a\`} {
 		if _, err := Tokenize(in); err == nil {
 			t.Fatalf("expected error for unterminated quote %q", in)
 		}

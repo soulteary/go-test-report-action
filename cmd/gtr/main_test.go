@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/soulteary/go-test-report-action/internal/config"
+	"github.com/soulteary/go-test-report-action/internal/coverage"
 	"github.com/soulteary/go-test-report-action/internal/gotest"
 	"github.com/soulteary/go-test-report-action/internal/model"
 )
@@ -354,5 +355,80 @@ func TestDeriveModulePath(t *testing.T) {
 	}
 	if got := deriveModulePath(pkgs); got != "example.com" {
 		t.Fatalf("expected example.com, got %q", got)
+	}
+}
+
+func TestDecideExitCode(t *testing.T) {
+	cfg := &config.Config{}
+
+	// Compile failure takes precedence over everything.
+	compile := gotest.ParseResult{CompileFailed: true}
+	if got := decideExitCode(cfg, compile, coverage.Result{}, nil); got != config.ExitTestFailure {
+		t.Fatalf("compile failure should be exit 10, got %d", got)
+	}
+
+	// A failing test also yields a test failure.
+	failing := gotest.ParseResult{Tests: model.Tests{Failed: 1}}
+	if got := decideExitCode(cfg, failing, coverage.Result{}, nil); got != config.ExitTestFailure {
+		t.Fatalf("failing test should be exit 10, got %d", got)
+	}
+
+	// Passing tests with no thresholds succeed. Coverage packages not in the
+	// included set are treated as excluded from the per-package gate.
+	passing := gotest.ParseResult{Tests: model.Tests{Passed: 1}}
+	covRes := coverage.Result{
+		CoveredStatements: 1,
+		TotalStatements:   2,
+		Packages: []coverage.PackageCoverage{
+			{ImportPath: "m/included", CoveredStatements: 1, TotalStatements: 1},
+			{ImportPath: "m/other", CoveredStatements: 0, TotalStatements: 1},
+		},
+	}
+	cfgPkg := &config.Config{PackageThreshold: 100}
+	// Only m/included is in scope; m/other is excluded, so the gate passes.
+	if got := decideExitCode(cfgPkg, passing, covRes, []string{"m/included"}); got != config.ExitSuccess {
+		t.Fatalf("out-of-scope package must not fail the gate, got %d", got)
+	}
+}
+
+// TestExecute_SummaryWriteFails covers the branch where writing the Job Summary
+// to a file fails (parent directory does not exist).
+func TestExecute_SummaryWriteFails(t *testing.T) {
+	dir := writeGoModule(t)
+	outDir := t.TempDir()
+	cfg := &config.Config{
+		Directory:      dir,
+		Packages:       "./...",
+		CoverMode:      config.CoverModeSet,
+		JSONOutput:     filepath.Join(outDir, "report.json"),
+		MarkdownOutput: filepath.Join(outDir, "report.md"),
+		SVGOutput:      filepath.Join(outDir, "badge.svg"),
+		// Nested, non-existent directory: os.WriteFile cannot create it.
+		SummaryOutput: filepath.Join(outDir, "missing-dir", "summary.md"),
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	code := execute(context.Background(), cfg, nil, &out, &errb)
+	if code != config.ExitToolchainError {
+		t.Fatalf("expected toolchain error when summary write fails, got %d; stderr=%s", code, errb.String())
+	}
+}
+
+// TestWriteReports_WriteFileFails covers the branch where the output directory
+// exists but writing the file fails because the target path is a directory.
+func TestWriteReports_WriteFileFails(t *testing.T) {
+	outDir := t.TempDir()
+	// Make JSONOutput a directory so os.WriteFile fails with EISDIR.
+	jsonPath := filepath.Join(outDir, "report.json")
+	if err := os.Mkdir(jsonPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{JSONOutput: jsonPath}
+	var errb bytes.Buffer
+	code := writeReports(cfg, model.Report{}, &errb)
+	if code != config.ExitToolchainError {
+		t.Fatalf("expected toolchain error when file write fails, got %d; stderr=%s", code, errb.String())
 	}
 }

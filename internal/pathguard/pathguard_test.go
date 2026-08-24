@@ -75,6 +75,20 @@ func TestNewEmptyWorkspace(t *testing.T) {
 	}
 }
 
+// TestNewNonExistentWorkspace covers the EvalSymlinks fallback branch in New:
+// when the workspace cannot be resolved, it falls back to the cleaned absolute
+// path instead of failing.
+func TestNewNonExistentWorkspace(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "does-not-exist", "sub")
+	g, err := New(missing)
+	if err != nil {
+		t.Fatalf("New should fall back for a non-existent workspace: %v", err)
+	}
+	if g.Root() != filepath.Clean(missing) {
+		t.Fatalf("expected root %q, got %q", filepath.Clean(missing), g.Root())
+	}
+}
+
 // TestSymlinkParentEscape ensures an output path whose parent is a symlink
 // pointing outside the workspace is rejected, even if the leaf does not exist.
 func TestSymlinkParentEscape(t *testing.T) {

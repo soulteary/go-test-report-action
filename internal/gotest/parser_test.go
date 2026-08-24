@@ -1,6 +1,8 @@
 package gotest
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -166,5 +168,56 @@ func TestTopLevel(t *testing.T) {
 	}
 	if topLevel("TestA") != "TestA" {
 		t.Fatal("topLevel of top-level should be itself")
+	}
+}
+
+// TestCountTests_SkippedAndPassed covers the branch where a top-level test is
+// recorded in both tests (passed) and skipped maps: skipped wins in the tally.
+func TestCountTests_SkippedAndPassed(t *testing.T) {
+	p := newPkgAgg("m/a")
+	p.tests["TestA"] = false // passed
+	p.skipped["TestA"] = true
+	p.tests["TestB"] = false // passed, not skipped
+	passed, failed, skipped := countTests(p)
+	if passed != 1 || failed != 0 || skipped != 1 {
+		t.Fatalf("got passed=%d failed=%d skipped=%d", passed, failed, skipped)
+	}
+}
+
+// TestAppendBounded_EarlyReturn covers the guard that stops appending once the
+// buffer already reached the cap, plus mid-write truncation.
+func TestAppendBounded_EarlyReturn(t *testing.T) {
+	var b strings.Builder
+	appendBounded(&b, strings.Repeat("x", maxFailureOutputBytes))
+	if b.Len() != maxFailureOutputBytes {
+		t.Fatalf("expected buffer filled to cap, got %d", b.Len())
+	}
+	// Second call must be a no-op (early return branch).
+	appendBounded(&b, "more")
+	if b.Len() != maxFailureOutputBytes {
+		t.Fatalf("expected no growth past cap, got %d", b.Len())
+	}
+}
+
+// TestParseFile covers the file-opening wrapper for both success and error.
+func TestParseFile(t *testing.T) {
+	if _, err := ParseFile(filepath.Join(t.TempDir(), "missing.jsonl")); err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.jsonl")
+	content := strings.Join([]string{
+		`{"Action":"run","Package":"m/a","Test":"TestOK"}`,
+		`{"Action":"pass","Package":"m/a","Test":"TestOK"}`,
+	}, "\n")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := ParseFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Tests.Passed != 1 {
+		t.Fatalf("expected 1 passed, got %+v", res.Tests)
 	}
 }
