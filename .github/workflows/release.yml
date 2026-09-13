@@ -108,6 +108,18 @@ jobs:
           # build, SBOM, signing and attestation had all succeeded, and with every
           # artifact discarded.
           if gh release view "$v" >/dev/null 2>&1; then
+            # --clobber deletes and re-uploads same-named assets, so it must
+            # never run on a build that does not correspond to $v. The checkout
+            # step has no `ref:`, so a manual dispatch naming an existing tag
+            # builds the dispatch ref instead -- previously that was merely
+            # mislabeled and `gh release create` refused it, but an unguarded
+            # --clobber would replace a published release's real assets with
+            # binaries built from something else. Only the tag push for this
+            # exact tag may overwrite.
+            if [ "${GITHUB_REF_NAME}" != "$v" ]; then
+              echo "::error::refusing to overwrite ${v} assets from a run building ${GITHUB_REF_NAME}"
+              exit 1
+            fi
             echo "Release $v already exists; uploading artifacts into it."
             gh release upload "$v" dist/* --clobber
           else

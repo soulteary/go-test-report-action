@@ -256,9 +256,10 @@ planned for a later version.
 - Release assets are named `gtr_<version>_<os>_<arch>.tar.gz` (`.zip`
   on Windows) for Linux/macOS/Windows on amd64/arm64, with a `checksums.txt`.
 - Every archive, `checksums.txt`, and the CycloneDX SBOM are signed with cosign
-  keyless signing (`.sig` + `.pem` alongside each file) and archives carry an
-  SLSA build-provenance attestation. See [SECURITY.md](SECURITY.md) for the
-  `cosign verify-blob` / `gh attestation verify` commands.
+  keyless signing (a `.cosign.bundle` alongside each file, carrying both the
+  signature and the certificate) and archives carry an SLSA build-provenance
+  attestation. See [SECURITY.md](SECURITY.md) for the `cosign verify-blob` /
+  `gh attestation verify` commands.
 - `version: latest` resolves the newest release; a fixed version downloads that
   release. On download or checksum failure the action falls back to building
   from its own checkout.
