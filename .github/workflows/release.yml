@@ -114,10 +114,17 @@ jobs:
             # builds the dispatch ref instead -- previously that was merely
             # mislabeled and `gh release create` refused it, but an unguarded
             # --clobber would replace a published release's real assets with
-            # binaries built from something else. Only the tag push for this
-            # exact tag may overwrite.
-            if [ "${GITHUB_REF_NAME}" != "$v" ]; then
-              echo "::error::refusing to overwrite ${v} assets from a run building ${GITHUB_REF_NAME}"
+            # binaries built from something else.
+            #
+            # Matching the name alone is not enough: GITHUB_REF_NAME is the
+            # short name of a branch just as much as of a tag, so a dispatch
+            # from a branch literally named "v1.1.1" would satisfy it while
+            # building the branch. The ref must also BE a tag. Both runs that
+            # do build the right tree still pass -- the tag push, and a
+            # dispatch started from the tag itself, which is the documented
+            # recovery path.
+            if [ "${GITHUB_REF_TYPE}" != "tag" ] || [ "${GITHUB_REF_NAME}" != "$v" ]; then
+              echo "::error::refusing to overwrite ${v} assets from a run building ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}"
               exit 1
             fi
             echo "Release $v already exists; uploading artifacts into it."

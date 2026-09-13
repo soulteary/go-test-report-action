@@ -34,7 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gh release upload --clobber` can no longer overwrite a published release's
   assets. The checkout step has no `ref:`, so a manual dispatch naming an
   existing tag builds the dispatch ref; the upload branch now refuses unless
-  the run is the tag push for that exact tag.
+  the run's own ref is a tag and that tag is the one being published. Checking
+  the name alone would not do it — `GITHUB_REF_NAME` is the short name of a
+  branch just as much as of a tag, so a dispatch from a branch named `v1.1.1`
+  would have passed while building the branch. A dispatch started from the tag
+  itself still works; that is the documented recovery path.
 - `README.md` and `SECURITY.md` documented verification with
   `cosign verify-blob --signature ....sig --certificate ....pem`. The bundle
   format ships a single `.cosign.bundle` instead, so the project's own
