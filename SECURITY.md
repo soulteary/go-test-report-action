@@ -37,14 +37,15 @@ minimal, auditable trust boundary:
   (SHA256) before use; a failed download or checksum falls back to a source
   build from the pinned action checkout. Each release archive, `checksums.txt`,
   and the SBOM are additionally signed with [cosign](https://docs.sigstore.dev/)
-  keyless signing (Sigstore transparency log, no long-lived keys), ship a
+  keyless signing -- each artifact ships a `.cosign.bundle` holding both the
+  signature and the certificate (Sigstore transparency log, no long-lived
+  keys) -- ship a
   CycloneDX SBOM, and carry an SLSA build-provenance attestation. Verify an
   archive with:
 
   ```bash
   cosign verify-blob \
-    --certificate gtr_<version>_<os>_<arch>.tar.gz.pem \
-    --signature  gtr_<version>_<os>_<arch>.tar.gz.sig \
+    --bundle gtr_<version>_<os>_<arch>.tar.gz.cosign.bundle \
     --certificate-identity-regexp 'https://github.com/soulteary/go-test-report-action/.+' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
     gtr_<version>_<os>_<arch>.tar.gz

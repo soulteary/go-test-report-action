@@ -2,7 +2,12 @@ name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]
+    tags:
+      # Stable three-segment releases only. "v*.*.*" also matched prerelease
+      # tags such as v1.2.0-rc.1, and the alias step below derives the major
+      # with "%%" -- so publishing a release candidate force-moved v1 onto it
+      # and every consumer pinned to @v1 silently followed.
+      - "v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
     inputs:
       version:
@@ -28,6 +33,11 @@ jobs:
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pin the tool, not just the installer. This is the installer's own
+          # default today, so it changes nothing now -- it stops a future
+          # installer bump from moving cosign underneath us silently.
+          cosign-release: v3.0.6
 
       - name: Determine version
         id: ver
@@ -67,9 +77,12 @@ jobs:
           for f in *.tar.gz *.zip checksums.txt *_sbom.cdx.json; do
             [ -e "$f" ] || continue
             echo "signing $f"
+            # cosign v3 defaults to the new bundle format, under which
+            # --output-signature and --output-certificate are ignored; with no
+            # --bundle given it fails with "create bundle file: open : no such
+            # file or directory". The bundle carries signature and certificate.
             cosign sign-blob --yes \
-              --output-signature "${f}.sig" \
-              --output-certificate "${f}.pem" \
+              --bundle "${f}.cosign.bundle" \
               "$f"
           done
 
@@ -87,9 +100,33 @@ jobs:
         run: |
           set -euo pipefail
           v="${{ steps.ver.outputs.version }}"
-          gh release create "$v" dist/* \
-            --title "$v" \
-            --generate-notes
+          # Creating a Release through the UI also creates its tag, which is what
+          # starts this workflow -- so the Release usually already exists by the
+          # time this runs. A bare `gh release create` then aborts with "a release
+          # with the same tag name already exists", which is exactly how the only
+          # run this workflow has ever had (32470223600, v1.0.0) died: after the
+          # build, SBOM, signing and attestation had all succeeded, and with every
+          # artifact discarded.
+          if gh release view "$v" >/dev/null 2>&1; then
+            # --clobber deletes and re-uploads same-named assets, so it must
+            # never run on a build that does not correspond to $v. The checkout
+            # step has no `ref:`, so a manual dispatch naming an existing tag
+            # builds the dispatch ref instead -- previously that was merely
+            # mislabeled and `gh release create` refused it, but an unguarded
+            # --clobber would replace a published release's real assets with
+            # binaries built from something else. Only the tag push for this
+            # exact tag may overwrite.
+            if [ "${GITHUB_REF_NAME}" != "$v" ]; then
+              echo "::error::refusing to overwrite ${v} assets from a run building ${GITHUB_REF_NAME}"
+              exit 1
+            fi
+            echo "Release $v already exists; uploading artifacts into it."
+            gh release upload "$v" dist/* --clobber
+          else
+            gh release create "$v" dist/* \
+              --title "$v" \
+              --generate-notes
+          fi
 
       - name: Update moving major tag
         if: startsWith(steps.ver.outputs.version, 'v')
