@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The release workflow now runs when a Release is published, not only on the tag
+  push. GitHub skips push-triggered runs when the head commit message contains
+  `[skip ci]`, and for a tag push the head commit is the tagged commit. The
+  Go Report Card job commits `chore: update Go Report Card badge [skip ci]` to
+  `main` on every push, so `main`'s tip carries that marker much of the time --
+  and v1.1.1 was tagged at exactly such a commit, so no release run started and
+  the release went out with no assets. The `release` trigger is not subject to
+  the skip directive.
+- The version is checked for a stable `vMAJOR.MINOR.PATCH` shape on every path
+  into the workflow. Only the push trigger filtered the tag, so a
+  `workflow_dispatch` naming `v1.2.0-rc.1` -- or a Release published at such a
+  tag -- reached the alias step, which derives the major with `%%` and would
+  have force-moved `v1` onto a prerelease. Prerelease Releases are skipped
+  outright, and concurrent runs for one tag no longer race to upload assets.
+
+
 ## [1.1.1] - 2026-09-13
 
 ### Fixed

@@ -8,6 +8,20 @@ on:
       # with "%%" -- so publishing a release candidate force-moved v1 onto it
       # and every consumer pinned to @v1 silently followed.
       - "v[0-9]+.[0-9]+.[0-9]+"
+  # The push trigger alone is not enough. GitHub skips push-triggered runs when
+  # the HEAD COMMIT MESSAGE contains "[skip ci]", and for a tag push the head
+  # commit is the tagged commit -- so a tag cut at such a commit silently starts
+  # nothing. That is not hypothetical here: the Go Report Card job commits
+  # "chore: update Go Report Card badge [skip ci]" to main on every push, so
+  # main's tip carries that marker much of the time. v1.1.1 was tagged at
+  # 091a510, exactly such a commit, and no run started at all.
+  #
+  # The skip directive applies to push and pull_request only, so the release
+  # event gets through. It also fires on the action the releases here are
+  # actually made by -- creating the Release in the UI -- rather than on a proxy
+  # for it.
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
@@ -17,8 +31,20 @@ on:
 permissions:
   contents: read
 
+# A UI release fires push AND release, so without this the same tag builds twice
+# and the second run clobbers the first's assets mid-upload. Not cancel-in-
+# progress: a half-finished upload is worse than a duplicated one.
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   release:
+    # The push trigger's tag filter keeps prereleases out, and the release
+    # trigger has no filter of its own -- so it needs this. The alias step
+    # derives the major with "%%", so building v1.2.0-rc.1 would force-move v1
+    # onto a release candidate and every consumer pinned to @v1 would follow.
+    if: github.event_name != 'release' || github.event.release.prerelease == false
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the release and push the moving major tag
@@ -47,6 +73,15 @@ jobs:
             v="${{ github.event.inputs.version }}"
           else
             v="${GITHUB_REF_NAME}"
+          fi
+          # Every path ends at the alias step, which derives the major with
+          # "%%". Only the push trigger filters the tag shape, so a dispatch
+          # typed as "v1.2.0-rc.1" -- or a release published at such a tag --
+          # would reach it and force-move v1 onto a prerelease. Check the shape
+          # once, here, where all three triggers meet.
+          if ! printf '%s' "$v" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::refusing to release '${v}': not a stable vMAJOR.MINOR.PATCH tag"
+            exit 1
           fi
           echo "version=${v}" >> "$GITHUB_OUTPUT"
           # Derive the moving major tag, e.g. v1 from v1.2.3.
