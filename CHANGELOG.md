@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-13
+
+### Fixed
+- Releases now actually carry their artifacts. The release workflow had run
+  exactly once, on v1.0.0, and failed; all three existing releases were created
+  by hand and carry no assets. Because `scripts/install-release.sh` downloads
+  those archives, every consumer hit
+  `::warning::release download failed; falling back to source build` on every
+  run and paid for a source build. Three defects had to be fixed before a run
+  could finish:
+  - `gh release create` was not idempotent, which is what actually killed the
+    one run: creating a Release through the UI also creates its tag, which is
+    what starts this workflow, so the Release usually already exists by then.
+    The build, SBOM, signing and attestation had all succeeded and every
+    artifact was discarded on that one line.
+  - cosign was still passing `--output-signature` / `--output-certificate`,
+    which cosign v3 ignores under its bundle format; with no `--bundle` it
+    aborts and `set -e` stops the job. Signing now writes
+    `<artifact>.cosign.bundle`, and `cosign-release` is pinned explicitly so a
+    future installer bump cannot move the tool silently.
+  - the `v*.*.*` tag filter matched prerelease tags such as `v1.2.0-rc.1`, and
+    the alias step derives the major with `${v%%.*}`, so publishing a release
+    candidate would have force-moved `v1` onto it. The filter is now
+    `v[0-9]+.[0-9]+.[0-9]+`.
+- `gh release upload --clobber` can no longer overwrite a published release's
+  assets. The checkout step has no `ref:`, so a manual dispatch naming an
+  existing tag builds the dispatch ref; the upload branch now refuses unless
+  the run's own ref is a tag and that tag is the one being published. Checking
+  the name alone would not do it — `GITHUB_REF_NAME` is the short name of a
+  branch just as much as of a tag, so a dispatch from a branch named `v1.1.1`
+  would have passed while building the branch. A dispatch started from the tag
+  itself still works; that is the documented recovery path.
+- `README.md` and `SECURITY.md` documented verification with
+  `cosign verify-blob --signature ....sig --certificate ....pem`. The bundle
+  format ships a single `.cosign.bundle` instead, so the project's own
+  documented verification would have failed on every newly published artifact.
+
+No change to the Action's behaviour or its inputs and outputs; the Go code is
+untouched. The effect for consumers is that prebuilt binaries become available
+for the first time, replacing the per-run source build.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added
@@ -54,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Markdown report, self-contained SVG coverage badge, and JSON output, with a
   GitHub Actions Job Summary, coverage gates, and optional in-repo write-back.
 
-[Unreleased]: https://github.com/soulteary/go-test-report-action/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/soulteary/go-test-report-action/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/soulteary/go-test-report-action/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/soulteary/go-test-report-action/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/soulteary/go-test-report-action/releases/tag/v1.0.0
