@@ -1,24 +1,24 @@
 {
   "schema_version": "1.0",
   "tests": {
-    "total": 81,
-    "passed": 81,
+    "total": 105,
+    "passed": 105,
     "failed": 0,
     "skipped": 0
   },
   "coverage": {
-    "covered_statements": 631,
-    "total_statements": 721,
-    "percentage": 87.52,
+    "covered_statements": 685,
+    "total_statements": 729,
+    "percentage": 93.96,
     "threshold": 85
   },
   "packages": [
     {
       "name": "cmd/gtr",
       "status": "pass",
-      "tests": 7,
+      "tests": 22,
       "failed": 0,
-      "coverage": 63.16
+      "coverage": 86.84
     },
     {
       "name": "internal/config",
@@ -30,16 +30,16 @@
     {
       "name": "internal/coverage",
       "status": "pass",
-      "tests": 12,
+      "tests": 13,
       "failed": 0,
-      "coverage": 94.44
+      "coverage": 100
     },
     {
       "name": "internal/gotest",
       "status": "pass",
-      "tests": 24,
+      "tests": 31,
       "failed": 0,
-      "coverage": 91.81
+      "coverage": 94.12
     },
     {
       "name": "internal/model",
@@ -51,9 +51,9 @@
     {
       "name": "internal/pathguard",
       "status": "pass",
-      "tests": 11,
+      "tests": 12,
       "failed": 0,
-      "coverage": 92
+      "coverage": 94
     },
     {
       "name": "internal/report",
