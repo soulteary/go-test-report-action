@@ -127,6 +127,12 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Set up action build Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache-dependency-path: ${{ github.action_path }}/go.sum
+
     - name: Validate inputs and paths
       shell: bash
       env:
@@ -137,12 +143,6 @@ runs:
         INPUT_RAW_OUTPUT: ${{ inputs.raw_output }}
       run: |
         bash "${GITHUB_ACTION_PATH}/scripts/validate-inputs.sh"
-
-    - name: Set up Go
-      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-      with:
-        go-version-file: ${{ inputs.directory }}/${{ inputs.go_version_file }}
-        cache-dependency-path: ${{ inputs.directory }}/go.sum
 
     - name: Install gtr
       id: install
@@ -163,6 +163,12 @@ runs:
           fi
         fi
         echo "bin=${BIN}" >> "${GITHUB_OUTPUT}"
+
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: ${{ inputs.directory }}/${{ inputs.go_version_file }}
+        cache-dependency-path: ${{ inputs.directory }}/go.sum
 
     - name: Run tests and generate reports
       id: run
