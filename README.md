@@ -37,6 +37,7 @@ coverage data.
 - id: test
   uses: soulteary/go-test-report-action@v1.1.2
   with:
+    version: "v1.1.2"
     coverage_threshold: "80"
 ```
 
@@ -209,12 +210,14 @@ Run the action once per module using `directory` and distinct output paths:
 ```yaml
 - uses: soulteary/go-test-report-action@v1.1.2
   with:
+    version: "v1.1.2"
     directory: services/api
     report_output: services/api/.github/go-test-report.md
     badge_output: services/api/.github/coverage.svg
     json_output: services/api/.github/go-test-report.json
 - uses: soulteary/go-test-report-action@v1.1.2
   with:
+    version: "v1.1.2"
     directory: services/worker
     report_output: services/worker/.github/go-test-report.md
     badge_output: services/worker/.github/coverage.svg
