@@ -18,7 +18,7 @@ jobs:
       - id: test
         # Pin to a full commit SHA in production and let Dependabot/Renovate
         # update it; the public major tag is shown here for readability.
-        uses: soulteary/go-test-report-action@v1
+        uses: soulteary/go-test-report-action@bf04b539f7bf2a6f67d602da4259904b3dcdeba1 # v1.1.2
         with:
           directory: "."
           go_version_file: "go.mod"
@@ -28,6 +28,7 @@ jobs:
           package_threshold: "60"
           commit: "false"
 
+          version: v1.1.2
       - name: Upload raw reports
         if: always()
         uses: actions/upload-artifact@v7
