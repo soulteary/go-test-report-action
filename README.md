@@ -35,7 +35,7 @@ coverage data.
 ```yaml
 - uses: actions/checkout@v7
 - id: test
-  uses: soulteary/go-test-report-action@v1
+  uses: soulteary/go-test-report-action@v1.1.2
   with:
     coverage_threshold: "80"
 ```
@@ -57,8 +57,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: soulteary/go-test-report-action@v1
+      - uses: soulteary/go-test-report-action@v1.1.2
         with:
+          version: "v1.1.2"
           race: "true"
           coverage_threshold: "80"
           package_threshold: "60"
@@ -70,28 +71,17 @@ jobs:
           path: .github/test-results/
 ```
 
-## Default-branch workflow (write-back)
+## Release and manual reports (guarded write-back)
 
-Only this workflow needs `contents: write`. It regenerates the report and
-commits the three stable files when they change. See
-[examples/update-report.yml](examples/update-report.yml).
+Use [examples/update-report.yml](examples/update-report.yml) for paired reports on
+pushed tags, published releases, or a maintainer's manual dispatch. Ordinary
+branch pushes do not refresh reports through this example. Both report Actions
+use fixed released versions and `commit: false` with `contents: read`.
 
-```yaml
-permissions:
-  contents: write
-concurrency:
-  group: go-test-report-${{ github.ref }}
-  cancel-in-progress: true
-jobs:
-  report:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: soulteary/go-test-report-action@v1
-        with:
-          coverage_threshold: "80"
-          commit: "true"
-```
+Only the separate write-back job needs `contents: write`. It commits the five
+stable report files together when the tested source is still the default-branch
+head. Historical tags retain artifacts without a repository commit. The gate
+reuses successful tag reports only while their stable artifacts remain available.
 
 In your README, reference the generated badge with a relative link:
 
@@ -217,13 +207,13 @@ gtr run \
 Run the action once per module using `directory` and distinct output paths:
 
 ```yaml
-- uses: soulteary/go-test-report-action@v1
+- uses: soulteary/go-test-report-action@v1.1.2
   with:
     directory: services/api
     report_output: services/api/.github/go-test-report.md
     badge_output: services/api/.github/coverage.svg
     json_output: services/api/.github/go-test-report.json
-- uses: soulteary/go-test-report-action@v1
+- uses: soulteary/go-test-report-action@v1.1.2
   with:
     directory: services/worker
     report_output: services/worker/.github/go-test-report.md
