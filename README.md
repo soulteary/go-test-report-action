@@ -271,3 +271,7 @@ coverage on pull requests is gated separately (new lines `>= 90%`). See
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+### Project toolchain
+
+The action installs its own build tools separately, then selects the Go version declared by the target project before running checks. Later workflow steps keep that project toolchain. Nested setup steps disable caching to avoid overlapping restores; callers can configure their own setup-go cache.

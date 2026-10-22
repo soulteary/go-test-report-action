@@ -33,6 +33,9 @@ jobs:
         run: |
           mkdir -p "${GITHUB_WORKSPACE}/_smoke-proj"
           cp -R testdata/passing/. "${GITHUB_WORKSPACE}/_smoke-proj/"
+          # Deliberately differs from the action build Go to catch toolchain leaks.
+          sed -i.bak 's/^go .*/go 1.27.2/' "${GITHUB_WORKSPACE}/_smoke-proj/go.mod"
+          rm -f "${GITHUB_WORKSPACE}/_smoke-proj/go.mod.bak"
           ls -la "${GITHUB_WORKSPACE}/_smoke-proj"
 
       - name: Run Go Test Report (source build)
@@ -69,6 +72,8 @@ jobs:
                    "${GITHUB_WORKSPACE}/_smoke-proj/.github/go-test-report.json"; do
             [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
           done
+          [ "$(go env GOVERSION)" = "go1.27.2" ] || { echo "::error::action leaked its build toolchain"; exit 1; }
+          (cd _smoke-proj && go list ./...)
           echo "smoke test passed"
 
   commit-scope:
