@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           go test -covermode=atomic -coverprofile=coverage.out ./...
-          go tool cover -func=coverage.out | tail -n1
+          GOTOOLCHAIN=auto go tool cover -func=coverage.out | tail -n1
 
         if: "!(github.event_name == 'pull_request' && runner.os == 'Linux')"
       - name: Remove stale generated report evidence
@@ -102,7 +102,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          total="$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,"",$3); print $3}')"
+          total="$(GOTOOLCHAIN=auto go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,"",$3); print $3}')"
           echo "total coverage: ${total}%"
           awk -v t="$total" 'BEGIN { if (t+0 < 85.0) { printf("::error::project coverage %.2f%% < 85%%\n", t); exit 1 } }'
 
